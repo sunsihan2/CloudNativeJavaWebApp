@@ -47,6 +47,12 @@ public class User {
     private String account_created;
     private String account_updated;
 
+    @Column(name = "verified")
+    private boolean verified;
+
+    @Column(name = "verified_on")
+    private String verified_on;
+
     public User() {
 
     }
@@ -59,6 +65,7 @@ public class User {
         this.username = username;
         this.account_created = OffsetDateTime.now(Clock.systemUTC()).toString();
         this.account_updated = OffsetDateTime.now(Clock.systemUTC()).toString();
+        this.verified = false;
     }
 
     @Override
@@ -141,5 +148,21 @@ public class User {
 
     public void setAccount_updated(String account_updated) {
         this.account_updated = account_updated;
+    }
+
+    public boolean isVerified() {
+        return verified;
+    }
+
+    public void setVerified(boolean verified) {
+        this.verified = verified;
+    }
+
+    public String getVerified_on() {
+        return verified_on;
+    }
+
+    public void setVerified_on(String verified_on) {
+        this.verified_on = verified_on;
     }
 }
