@@ -4,6 +4,7 @@ import com.example.healthcheckapi.controller.UserController;
 import com.example.healthcheckapi.repository.ImageRepository;
 import com.example.healthcheckapi.repository.UserRepository;
 import com.example.healthcheckapi.service.ImageStorageService;
+import com.timgroup.statsd.StatsDClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -35,6 +36,9 @@ public class UserPostTests {
 
     @MockBean
     ImageStorageService service;
+
+    @MockBean
+    private StatsDClient statsDClient;
 
     @Test
     public void testCreateUser() throws Exception

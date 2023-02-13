@@ -36,9 +36,34 @@
 
     {
       "type": "shell",
-      "script": "setup.sh"
-    }
+      "inline": [
+        "sudo sleep 10",
+        "sudo yum install amazon-cloudwatch-agent -y"
+      ]
+    },
 
-    
+    {
+      "type": "file",
+      "source": "cloudwatch-config.json",
+      "destination": "cloudwatch-config.json"
+    },
+
+    {
+      "type": "shell",
+      "script": "setup.sh"
+    },
+    {
+      "type": "shell",
+      "inline": [
+          "sudo yum install ruby -y",
+          "sudo sleep 10",
+          "cd /home/ec2-user",
+          "wget https://aws-codedeploy-{{user `aws_region`}}.s3.{{user `aws_region`}}.amazonaws.com/latest/install",
+          "chmod +x ./install",
+          "sudo ./install auto",
+          "sudo service codedeploy-agent start"
+      ]
+  }
+
   ]
 }

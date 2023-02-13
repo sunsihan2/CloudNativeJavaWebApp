@@ -42,3 +42,10 @@ sudo mkdir webservice
 sudo mv health-check-api-0.0.1-SNAPSHOT.jar webservice/
 
 sudo mv health-check-api.service /etc/systemd/system/health-check-api.service
+sudo mv cloudwatch-config.json /opt/aws/amazon-cloudwatch-agent/cloudwatch-config.json
+
+pwd
+sudo mkdir logs
+sudo chown -R ec2-user logs
+cd logs
+pwd

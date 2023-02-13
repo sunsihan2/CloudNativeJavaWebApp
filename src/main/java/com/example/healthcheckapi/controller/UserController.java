@@ -5,7 +5,10 @@ import com.example.healthcheckapi.model.User;
 import com.example.healthcheckapi.repository.ImageRepository;
 import com.example.healthcheckapi.repository.UserRepository;
 import com.example.healthcheckapi.service.ImageStorageService;
+import com.timgroup.statsd.StatsDClient;
 import org.apache.tomcat.util.codec.binary.Base64;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +36,11 @@ public class UserController {
     @Autowired
     ImageStorageService service;
 
+    @Autowired
+    private StatsDClient statsDClient;
+
+    private final static Logger logger = LoggerFactory.getLogger(UserController.class);
+
     public UserController() {
         System.out.println("In User Controller Constructor");
     }
@@ -42,10 +50,13 @@ public class UserController {
         try {
 
             System.out.println("In post /user");
+            statsDClient.incrementCounter("endpoint.user.api.post");
+            logger.info("endpoint.user.api.post hit successfully");
 
             if(user==null || user.getPassword() == null || user.getFirst_name() == null ||
                     user.getUsername() == null || user.getLast_name() == null)
             {
+                logger.error("endpoint.user.api.post - Incorrect input");
                 return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
             }
 
@@ -58,6 +69,7 @@ public class UserController {
 
             System.out.println("checking if user is present");
             if (u.isPresent()) {
+                logger.error("endpoint.user.api.post User is already present");
                 return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
             }
 
@@ -72,10 +84,12 @@ public class UserController {
 
 
             System.out.println("user saved in db");
+            logger.info("endpoint.user.api.post - User saved");
 
             return new ResponseEntity<>(_user, HttpStatus.CREATED);
         } catch (Exception e) {
             System.out.println("exception: " +e);
+            logger.error("endpoint.user.api.post - exception: " +e);
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
     }
@@ -83,9 +97,13 @@ public class UserController {
     @GetMapping("/user/self")
     public ResponseEntity<User> getUserByEmail(HttpServletRequest request) {
 
+        statsDClient.incrementCounter("endpoint.user.self.api.get");
+        logger.info("endpoint.user.self.api.get hit successfully");
+
         try{
             String upd = request.getHeader("authorization");
             if (upd == null || upd.isEmpty()) {
+                logger.error("endpoint.user.self.api.get - User Details not provided");
                 return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
             }
 
@@ -102,20 +120,23 @@ public class UserController {
 
             if (inputUser.isPresent()) {
                 if (bCryptPasswordEncoder.matches(password, inputUser.get().getPassword())) {
-
+                    logger.info("endpoint.user.self.api.get - User Found");
                     return new ResponseEntity<>(inputUser.get(), HttpStatus.OK);
                 } else {
                     System.out.println("Password does not match");
+                    logger.error("endpoint.user.self.api.get - Incorrect Password");
                     return new ResponseEntity<>(HttpStatus.NOT_FOUND);
                 }
             } else {
                 System.out.println("User Not Found");
+                logger.error("endpoint.user.self.api.get - User Not Found");
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             }
         }
         catch(Exception e)
         {
             System.out.println("Exception:"+e);
+            logger.error("endpoint.user.self.api.get - exception: " +e);
         }
         System.out.println("End - User Not Found");
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
@@ -125,6 +146,8 @@ public class UserController {
     public ResponseEntity<String> updateUser(@RequestBody User user, HttpServletRequest request) {
 
         System.out.println("In put /user/self");
+        statsDClient.incrementCounter("endpoint.user.self.api.put");
+        logger.info("endpoint.user.self.api.put hit successfully");
 
         if (user == null) {
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
@@ -132,14 +155,18 @@ public class UserController {
         if ((user.getFirst_name() == null || user.getFirst_name().isEmpty())
                 && (user.getLast_name() == null || user.getLast_name().isEmpty())
                 && (user.getPassword() == null || user.getPassword().isEmpty())) {
+
+            logger.error("endpoint.user.self.api.put - Incorrect Input");
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
         if (user.getUsername() != null || user.getId() != null) {
+            logger.error("endpoint.user.self.api.put - Incorrect Input");
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
         String upd = request.getHeader("authorization");
         if (upd == null || upd.isEmpty()) {
+            logger.error("endpoint.user.self.api.put - User details not provided");
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
 
@@ -168,14 +195,16 @@ public class UserController {
                 updatedUser.setAccount_updated(OffsetDateTime.now(Clock.systemUTC()).toString());
                 
                 userRepository.save(updatedUser);
-                
+
+                logger.info("endpoint.user.self.api.put - User updated successfully");
                 return new ResponseEntity<>("Update success", HttpStatus.OK);
 
             } else {
+                logger.error("endpoint.user.self.api.put - Incorrect Password");
                 return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
             }
         } else {
-
+            logger.error("endpoint.user.self.api.put - User Not Found");
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
@@ -184,9 +213,13 @@ public class UserController {
     public ResponseEntity<Image> createImage(@RequestParam(value="profilePic") MultipartFile profilePic, HttpServletRequest request) {
 
         System.out.println("In post /user/self/pic");
+        statsDClient.incrementCounter("endpoint.user.self.pic.api.post");
+        logger.info("endpoint.user.self.pic.api.post hit successfully");
+
         //check user credentials and get userid
         String upd = request.getHeader("authorization");
         if (upd == null || upd.isEmpty()) {
+            logger.error("endpoint.user.self.pic.api.post - User details not provided");
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
 
@@ -203,8 +236,10 @@ public class UserController {
                 User user = inputUser.get();
 
                 System.out.println("File Content Type: " + profilePic.getContentType());
-                if(!profilePic.getContentType().startsWith("image/"))
+                if(!profilePic.getContentType().startsWith("image/")) {
+                    logger.error("endpoint.user.self.pic.api.post - Incorrect File Type");
                     return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+                }
 
                 //check if already image i.e. update request
                 Optional<Image> img1 = imageRepository.findByUserId(user.getId());
@@ -213,6 +248,7 @@ public class UserController {
                     String result = service.deleteFileFromS3Bucket(img1.get().getUrl(), user.getId());
                     imageRepository.delete(img1.get());
                     System.out.println("previous image deleted");
+                    logger.info("endpoint.user.self.pic.api.post - previous image deleted");
                 }
                 
                 String bucket_name = service.uploadFile( user.getId() + "/" + profilePic.getOriginalFilename(), profilePic);
@@ -222,10 +258,14 @@ public class UserController {
                 img = new Image(profilePic.getOriginalFilename(), user.getId(), url);
                 imageRepository.save(img);
 
+                logger.info("endpoint.user.self.pic.api.post - Image uploaded successfully");
+
             } else {
+                logger.error("endpoint.user.self.pic.api.post - Incorrect password");
                 return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
             }
         } else {
+            logger.error("endpoint.user.self.pic.api.post - User Not Found");
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
         return new ResponseEntity<>(img, HttpStatus.CREATED);
@@ -235,10 +275,13 @@ public class UserController {
     public ResponseEntity<Image> getImage(HttpServletRequest request) {
 
         System.out.println("In get /user/self/pic");
+        statsDClient.incrementCounter("endpoint.user.self.pic.api.get");
+        logger.info("endpoint.user.self.pic.api.get hit successfully");
 
         //check user credentials and get userid
         String upd = request.getHeader("authorization");
         if (upd == null || upd.isEmpty()) {
+            logger.error("endpoint.user.self.pic.api.get - User details not provided");
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
 
@@ -258,15 +301,19 @@ public class UserController {
                 User user = inputUser.get();
                 img = imageRepository.findByUserId(user.getId());
                 if (img.isPresent()) {
+                    logger.info("endpoint.user.self.pic.api.get - Image Found");
                     return new ResponseEntity<>(img.get(), HttpStatus.OK);
                 }
                 else {
+                    logger.info("endpoint.user.self.pic.api.get - Image not found");
                     return new ResponseEntity<>(HttpStatus.NOT_FOUND);
                 }
             } else {
+                logger.error("endpoint.user.self.pic.api.get - Incorrect password");
                 return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
             }
         } else {
+            logger.error("endpoint.user.self.pic.api.get - User Not Found");
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
     }
@@ -275,10 +322,13 @@ public class UserController {
     public ResponseEntity<String> deleteImage(HttpServletRequest request) {
 
         System.out.println("In delete /user/self/pic");
+        statsDClient.incrementCounter("endpoint.user.self.pic.api.delete");
+        logger.info("endpoint.user.self.pic.api.delete hit successfully");
 
         //check user credentials and get userid
         String upd = request.getHeader("authorization");
         if (upd == null || upd.isEmpty()) {
+            logger.error("endpoint.user.self.pic.api.delete - User details not provided");
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
 
@@ -303,15 +353,19 @@ public class UserController {
 
                     String result = service.deleteFileFromS3Bucket(img.get().getUrl(),user.getId());
                     imageRepository.delete(img.get());
+                    logger.info("endpoint.user.self.pic.api.delete - Image deleted");
                     return new ResponseEntity<>(result, HttpStatus.OK);
                 }
                 else {
+                    logger.error("endpoint.user.self.pic.api.delete - Image not found");
                     return new ResponseEntity<>(HttpStatus.NO_CONTENT);
                 }
             } else {
+                logger.error("endpoint.user.self.pic.api.delete - Incorrect password");
                 return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
             }
         } else {
+            logger.error("endpoint.user.self.pic.api.delete - User Not Found");
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
