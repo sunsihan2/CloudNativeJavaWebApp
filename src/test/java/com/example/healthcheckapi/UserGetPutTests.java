@@ -1,5 +1,7 @@
 package com.example.healthcheckapi;
 
+import com.example.healthcheckapi.config.AmazonDynamoDbClient;
+import com.example.healthcheckapi.config.AmazonSNSClient;
 import com.example.healthcheckapi.controller.UserController;
 import com.example.healthcheckapi.model.User;
 import com.example.healthcheckapi.repository.ImageRepository;
@@ -47,10 +49,17 @@ public class UserGetPutTests {
     @MockBean
     private StatsDClient statsDClient;
 
+    @MockBean
+    private AmazonSNSClient amazonSNSClient;
+
+    @MockBean
+    private AmazonDynamoDbClient amazonDynamoDbClient;
+
     @Test
     public void testGetUser() throws Exception
     {
         User user = new User("First", "Last", "$2a$10$2HhYKmJsFT7pYZdi172TZezZAELLhNnEYoXHrmAX0JFCCZ8n00/eS", "email@mail.com");
+        user.setVerified(true);
         given(userRepository.findByUsername("email@mail.com")).willReturn(Optional.of(user));
 
         mockMvc.perform(get("/v1/user/self")
@@ -61,9 +70,10 @@ public class UserGetPutTests {
     }
 
     @Test
-    public void testputUser() throws Exception
+    public void testPutUser() throws Exception
     {
         User user = new User("First", "Last", "$2a$10$2HhYKmJsFT7pYZdi172TZezZAELLhNnEYoXHrmAX0JFCCZ8n00/eS", "email@mail.com");
+        user.setVerified(true);
         given(userRepository.findByUsername("email@mail.com")).willReturn(Optional.of(user));
 
         String json = "{\"first_name\":\"NewFirst\",\"last_name\":\"NewLast\",\"password\":\"updated\"}";
@@ -76,3 +86,4 @@ public class UserGetPutTests {
                 .andExpect(status().isOk());
     }
 }
+
